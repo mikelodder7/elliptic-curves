@@ -7,10 +7,8 @@ use crate::*;
 use alloc::string::{String, ToString};
 
 use elliptic_curve::{
-    generic_array::{
-        typenum::{U56, U84},
-        GenericArray,
-    },
+    array::Array,
+    consts::{U56, U84},
     group::{cofactor::CofactorGroup, prime::PrimeGroup, Curve, GroupEncoding},
     hash2curve::{ExpandMsg, Expander, FromOkm},
     ops::{LinearCombination, MulByGenerator},
@@ -24,7 +22,7 @@ use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTi
 /// The bytes representation of a compressed point
 pub type DecafPointBytes = [u8; 56];
 /// The group bytes representation
-pub type DecafPointRepr = GenericArray<u8, U56>;
+pub type DecafPointRepr = Array<u8, U56>;
 
 /// A Decaf point in the Twisted Edwards curve
 #[derive(Copy, Clone, Debug)]
@@ -236,7 +234,17 @@ impl PrimeGroup for DecafPoint {}
 
 impl MulByGenerator for DecafPoint {}
 
-impl LinearCombination for DecafPoint {}
+impl LinearCombination<[(DecafPoint, Scalar)]> for DecafPoint {
+    fn lincomb(points_and_scalars: &[(DecafPoint, Scalar)]) -> Self {
+        todo!()
+    }
+}
+
+impl LinearCombination<[(DecafPoint, Scalar); 2]> for DecafPoint {
+    fn lincomb(points_and_scalars: &[(DecafPoint, Scalar); 2]) -> Self {
+        todo!()
+    }
+}
 
 impl Curve for DecafPoint {
     type AffineRepr = DecafAffinePoint;
@@ -360,7 +368,7 @@ impl DecafPoint {
         X: for<'a> ExpandMsg<'a>,
     {
         let dst = [dst];
-        let mut random_bytes = GenericArray::<u8, U84>::default();
+        let mut random_bytes = Array::<u8, U84>::default();
         let mut expander =
             X::expand_message(&[msg], &dst, random_bytes.len() * 2).expect("bad dst");
         expander.fill_bytes(&mut random_bytes);

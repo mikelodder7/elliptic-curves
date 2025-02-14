@@ -114,8 +114,9 @@ impl Signature {
         if s[56] != 0x00 {
             return Err(SigningError::InvalidSignatureSComponent);
         }
-        let s_bytes = ScalarBytes::from_slice(&s);
-        let ss = Scalar::from_canonical_bytes(s_bytes);
+        // size missmatc
+        let s_bytes = ScalarBytes::from(s);
+        let ss = Scalar::from_canonical_bytes(&s_bytes);
 
         if ss.is_none().into() {
             return Err(SigningError::InvalidSignatureSComponent);
@@ -154,7 +155,9 @@ impl TryFrom<Signature> for InnerSignature {
     type Error = SigningError;
 
     fn try_from(signature: Signature) -> Result<Self, Self::Error> {
-        let s_bytes = ScalarBytes::from_slice(&signature.s);
+        todo!();
+        // size missmatch
+        let s_bytes = todo!(); // ScalarBytes::from(&signature.s);
         let s = Option::from(Scalar::from_canonical_bytes(s_bytes))
             .ok_or(SigningError::InvalidSignatureSComponent)?;
         let r = Option::from(signature.r.decompress())
