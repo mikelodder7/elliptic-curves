@@ -199,7 +199,8 @@ impl TryFrom<&[u8]> for SigningKey {
         if value.len() != SECRET_KEY_LENGTH {
             return Err("Invalid length for a signing key");
         }
-        Ok(Self::from(ScalarBytes::from_slice(value)))
+        let bytes = ScalarBytes::try_from(value).expect("size checked");
+        Ok(Self::from(bytes))
     }
 }
 
@@ -324,40 +325,48 @@ impl pkcs8::EncodePrivateKey for KeypairBytes {
         private_key[1] = SECRET_KEY_LENGTH as u8;
         private_key[2..].copy_from_slice(self.secret_key.as_ref());
 
-        let private_key_info = pkcs8::PrivateKeyInfo {
-            algorithm: super::ALGORITHM_ID,
-            private_key: &private_key,
-            public_key: self.verifying_key.as_ref().map(|v| v.as_ref()),
-        };
-        let result = pkcs8::SecretDocument::encode_msg(&private_key_info)?;
+        todo!();
+
+        // let private_key_info = pkcs8::PrivateKeyInfo {
+        //     algorithm: super::ALGORITHM_ID,
+        //     private_key: &private_key,
+        //     public_key: self.verifying_key.as_ref().map(|v| v.as_ref()),
+        // };
+
+        // No idea how to make these traits happy...
+        // let result = pkcs8::SecretDocument::encode_msg(&private_key_info)?;
 
         #[cfg(feature = "zeroize")]
         private_key.zeroize();
 
-        Ok(result)
+        // Ok(result)
     }
 }
 
 #[cfg(feature = "pkcs8")]
-impl TryFrom<pkcs8::PrivateKeyInfo<'_>> for KeypairBytes {
+impl TryFrom<pkcs8::PrivateKeyInfoRef<'_>> for KeypairBytes {
     type Error = pkcs8::Error;
 
-    fn try_from(value: pkcs8::PrivateKeyInfo<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: pkcs8::PrivateKeyInfoRef<'_>) -> Result<Self, Self::Error> {
         if value.algorithm.oid != super::ALGORITHM_OID {
             return Err(pkcs8::Error::KeyMalformed);
         }
-        if value.private_key.len() != SECRET_KEY_LENGTH {
+        if value.private_key.len() != SECRET_KEY_LENGTH.try_into().expect("fits into u32") {
             return Err(pkcs8::Error::KeyMalformed);
         }
         let mut secret_key = [0u8; SECRET_KEY_LENGTH];
-        secret_key.copy_from_slice(value.private_key);
+        secret_key.copy_from_slice(value.private_key.as_bytes());
         let verifying_key = if let Some(public_key) = value.public_key {
-            if public_key.len() != PUBLIC_KEY_LENGTH {
+            if let Some(pub_bytes) = public_key.as_bytes() {
+                if pub_bytes.len() != PUBLIC_KEY_LENGTH {
+                    return Err(pkcs8::Error::KeyMalformed);
+                }
+                let mut bytes = [0u8; PUBLIC_KEY_LENGTH];
+                bytes.copy_from_slice(pub_bytes);
+                Some(bytes)
+            } else {
                 return Err(pkcs8::Error::KeyMalformed);
             }
-            let mut bytes = [0u8; PUBLIC_KEY_LENGTH];
-            bytes.copy_from_slice(public_key);
-            Some(bytes)
         } else {
             None
         };
@@ -382,7 +391,7 @@ impl TryFrom<&KeypairBytes> for SigningKey {
     type Error = pkcs8::Error;
 
     fn try_from(value: &KeypairBytes) -> Result<Self, Self::Error> {
-        let signing_key = SigningKey::from(SecretKey::from_slice(value.secret_key.as_ref()));
+        let signing_key = SigningKey::from(SecretKey::from(value.secret_key));
 
         if let Some(public_bytes) = value.verifying_key {
             let verifying_key =
@@ -406,10 +415,10 @@ impl From<&SigningKey> for KeypairBytes {
 }
 
 #[cfg(feature = "pkcs8")]
-impl TryFrom<pkcs8::PrivateKeyInfo<'_>> for SigningKey {
+impl TryFrom<pkcs8::PrivateKeyInfoRef<'_>> for SigningKey {
     type Error = pkcs8::Error;
 
-    fn try_from(value: pkcs8::PrivateKeyInfo<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: pkcs8::PrivateKeyInfoRef<'_>) -> Result<Self, Self::Error> {
         KeypairBytes::try_from(value)?.try_into()
     }
 }

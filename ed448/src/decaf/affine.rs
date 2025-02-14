@@ -37,7 +37,9 @@ impl elliptic_curve::point::AffineCoordinates for AffinePoint {
     type FieldRepr = Decaf448FieldBytes;
 
     fn x(&self) -> Self::FieldRepr {
-        Decaf448FieldBytes::clone_from_slice(&self.x())
+        todo!()
+        // size missmatch
+        // Decaf448FieldBytes::from(self.x())
     }
 
     fn y_is_odd(&self) -> Choice {

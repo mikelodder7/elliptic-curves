@@ -11,10 +11,8 @@ use crate::curve::twedwards::extended::ExtendedPoint as TwistedExtendedPoint;
 use crate::field::{FieldElement, Scalar};
 use crate::*;
 use elliptic_curve::{
-    generic_array::{
-        typenum::{U57, U84},
-        GenericArray,
-    },
+    array::Array,
+    consts::{U57, U84},
     group::{cofactor::CofactorGroup, prime::PrimeGroup, Curve, Group, GroupEncoding},
     hash2curve::{ExpandMsg, ExpandMsgXof, Expander, FromOkm},
     ops::{LinearCombination, MulByGenerator},
@@ -179,7 +177,7 @@ impl TryFrom<PointBytes> for CompressedEdwardsY {
 
     fn try_from(value: PointBytes) -> Result<Self, Self::Error> {
         let pt = CompressedEdwardsY(value);
-        let _ = Option::<EdwardsPoint>::from(pt.decompress()).ok_or("Invalid point")?;
+        let _ = pt.decompress().into_option().ok_or("Invalid point")?;
         Ok(pt)
     }
 }
@@ -378,22 +376,18 @@ impl Group for EdwardsPoint {
 }
 
 impl GroupEncoding for EdwardsPoint {
-    type Repr = GenericArray<u8, U57>;
+    type Repr = Array<u8, U57>;
 
     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        let mut value = [0u8; 57];
-        value.copy_from_slice(bytes);
-        CompressedEdwardsY(value).decompress()
+        CompressedEdwardsY(bytes.0).decompress()
     }
 
     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        let mut value = [0u8; 57];
-        value.copy_from_slice(bytes);
-        CompressedEdwardsY(value).decompress()
+        CompressedEdwardsY(bytes.0).decompress()
     }
 
     fn to_bytes(&self) -> Self::Repr {
-        Self::Repr::clone_from_slice(&self.compress().0)
+        Array(self.compress().0)
     }
 }
 
@@ -470,7 +464,10 @@ impl TryFrom<PointBytes> for EdwardsPoint {
     type Error = &'static str;
 
     fn try_from(value: PointBytes) -> Result<Self, Self::Error> {
-        Option::<Self>::from(CompressedEdwardsY(value).decompress()).ok_or("Invalid point")
+        CompressedEdwardsY(value)
+            .decompress()
+            .into_option()
+            .ok_or("Invalid point")
     }
 }
 
@@ -518,7 +515,17 @@ impl From<&EdwardsPoint> for AffinePoint {
     }
 }
 
-impl LinearCombination for EdwardsPoint {}
+impl LinearCombination<[(EdwardsPoint, Scalar)]> for EdwardsPoint {
+    fn lincomb(points_and_scalars: &[(EdwardsPoint, Scalar)]) -> Self {
+        todo!()
+    }
+}
+
+impl LinearCombination<[(EdwardsPoint, Scalar); 2]> for EdwardsPoint {
+    fn lincomb(points_and_scalars: &[(EdwardsPoint, Scalar); 2]) -> Self {
+        todo!()
+    }
+}
 
 impl MulByGenerator for EdwardsPoint {}
 
@@ -755,7 +762,7 @@ impl EdwardsPoint {
     where
         X: for<'a> ExpandMsg<'a>,
     {
-        let mut random_bytes = GenericArray::<u8, U84>::default();
+        let mut random_bytes = Array::<u8, U84>::default();
         let dst = [dst];
         let mut expander =
             X::expand_message(&[msg], &dst, random_bytes.len() * 2).expect("bad dst");
@@ -786,7 +793,7 @@ impl EdwardsPoint {
     where
         X: for<'a> ExpandMsg<'a>,
     {
-        let mut random_bytes = GenericArray::<u8, U84>::default();
+        let mut random_bytes = Array::<u8, U84>::default();
         let dst = [dst];
         let mut expander = X::expand_message(&[msg], &dst, random_bytes.len()).expect("bad dst");
         expander.fill_bytes(&mut random_bytes);

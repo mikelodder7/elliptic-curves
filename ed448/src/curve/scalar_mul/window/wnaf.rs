@@ -25,8 +25,8 @@ impl LookupTable {
         let mut result = ProjectiveNielsPoint::identity();
 
         for i in 1..9 {
-            let swap = index.ct_eq(&(i as u32));
-            result.conditional_assign(&self.0[i - 1], swap);
+            let swap = index.ct_eq(&i);
+            result.conditional_assign(&self.0[(i as usize) - 1], swap);
         }
         result
     }

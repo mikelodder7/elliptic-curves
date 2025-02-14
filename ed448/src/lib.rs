@@ -86,8 +86,8 @@ pub use ristretto::{CompressedRistretto, RistrettoPoint};
 pub use sign::*;
 
 use elliptic_curve::{
-    bigint::{ArrayEncoding, ByteArray, U448},
-    generic_array::typenum::U57,
+    bigint::{ArrayEncoding, U448},
+    consts::U57,
     point::PointCompression,
     Curve, FieldBytesEncoding, PrimeCurve,
 };
@@ -123,8 +123,9 @@ impl PointCompression for Ed448 {
 
 impl FieldBytesEncoding<Ed448> for U448 {
     fn decode_field_bytes(field_bytes: &Ed448FieldBytes) -> Self {
-        let data = ByteArray::<U448>::from_slice(field_bytes);
-        U448::from_le_byte_array(*data)
+        todo!()
+        // size missmatch?
+        // U448::from_le_byte_array(*field_bytes)
     }
 
     fn encode_field_bytes(&self) -> Ed448FieldBytes {
@@ -172,8 +173,9 @@ impl PointCompression for Decaf448 {
 
 impl FieldBytesEncoding<Decaf448> for U448 {
     fn decode_field_bytes(field_bytes: &Decaf448FieldBytes) -> Self {
-        let data = ByteArray::<U448>::from_slice(field_bytes);
-        U448::from_le_byte_array(*data)
+        todo!()
+        // size missmatch
+        // U448::from_le_byte_array(*field_bytes)
     }
 
     fn encode_field_bytes(&self) -> Decaf448FieldBytes {

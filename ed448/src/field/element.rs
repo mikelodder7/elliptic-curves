@@ -1,12 +1,12 @@
 use core::fmt::{self, Debug, Display, Formatter, LowerHex, UpperHex};
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use elliptic_curve::array::Array;
 use elliptic_curve::{
     bigint::{
         consts::{U84, U88},
         Encoding, NonZero, U448, U704,
     },
-    generic_array::GenericArray,
     hash2curve::{FromOkm, MapToCurve},
 };
 use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq};
@@ -67,9 +67,9 @@ impl Eq for FieldElement {}
 impl FromOkm for FieldElement {
     type Length = U84;
 
-    fn from_okm(data: &GenericArray<u8, Self::Length>) -> Self {
-        const SEMI_WIDE_MODULUS: NonZero<U704> = NonZero::from_uint(U704::from_be_hex("0000000000000000000000000000000000000000000000000000000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-        let mut tmp = GenericArray::<u8, U88>::default();
+    fn from_okm(data: &Array<u8, Self::Length>) -> Self {
+        const SEMI_WIDE_MODULUS: NonZero<U704> = NonZero::<U704>::new_unwrap(U704::from_be_hex("0000000000000000000000000000000000000000000000000000000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
+        let mut tmp = Array::<u8, U88>::default();
         tmp[4..].copy_from_slice(&data[..]);
 
         let mut num = U704::from_be_slice(&tmp[..]);
@@ -401,7 +401,7 @@ mod tests {
         for (msg, expected_u0, expected_u1) in MSGS {
             let mut expander =
                 ExpandMsgXof::<Shake256>::expand_message(&[msg], &[DST], 84 * 2).unwrap();
-            let mut data = GenericArray::<u8, U84>::default();
+            let mut data = Array::<u8, U84>::default();
             expander.fill_bytes(&mut data);
             let u0 = FieldElement::from_okm(&data);
             let mut e_u0 = *expected_u0;
@@ -429,7 +429,7 @@ mod tests {
         for (msg, expected_u0, expected_u1) in MSGS {
             let mut expander =
                 ExpandMsgXof::<Shake256>::expand_message(&[msg], &[DST], 84 * 2).unwrap();
-            let mut data = GenericArray::<u8, U84>::default();
+            let mut data = Array::<u8, U84>::default();
             expander.fill_bytes(&mut data);
             let u0 = FieldElement::from_okm(&data);
             let mut e_u0 = *expected_u0;

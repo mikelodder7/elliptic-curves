@@ -8,12 +8,10 @@ use core::ops::{
 };
 
 use elliptic_curve::{
+    array::Array,
     bigint::{Encoding, Limb, NonZero, U448, U704, U896},
+    consts::{U114, U57, U84, U88},
     ff::{helpers, Field, FieldBits, PrimeFieldBits},
-    generic_array::{
-        typenum::{U114, U57, U84, U88},
-        GenericArray,
-    },
     hash2curve::{ExpandMsg, Expander, FromOkm},
     ops::{Invert, Reduce, ReduceNonZero},
     scalar::{FromUintUnchecked, IsHigh, ScalarPrimitive},
@@ -29,9 +27,9 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, ConstantTimeGreate
 pub struct Scalar(pub(crate) [u32; 14]);
 
 /// The number of bytes needed to represent the scalar field
-pub type ScalarBytes = GenericArray<u8, U57>;
+pub type ScalarBytes = Array<u8, U57>;
 /// The number of bytes needed to represent the safely create a scalar from a random bytes
-pub type WideScalarBytes = GenericArray<u8, U114>;
+pub type WideScalarBytes = Array<u8, U114>;
 
 /// The modulus of the scalar field
 pub const MODULUS: Scalar = constants::BASEPOINT_ORDER;
@@ -407,7 +405,8 @@ impl TryFrom<&[u8]> for Scalar {
         if bytes.len() != 57 {
             return Err("invalid byte length");
         }
-        let scalar_bytes = ScalarBytes::clone_from_slice(bytes);
+        // size missmatch
+        let scalar_bytes = todo!(); // ScalarBytes::from(bytes);
         Option::<Scalar>::from(Scalar::from_canonical_bytes(&scalar_bytes))
             .ok_or("scalar was not canonically encoded")
     }
@@ -472,9 +471,9 @@ impl core::fmt::UpperHex for Scalar {
 impl FromOkm for Scalar {
     type Length = U84;
 
-    fn from_okm(data: &GenericArray<u8, Self::Length>) -> Self {
-        const SEMI_WIDE_MODULUS: NonZero<U704> = NonZero::from_uint(U704::from_be_hex("00000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
-        let mut tmp = GenericArray::<u8, U88>::default();
+    fn from_okm(data: &Array<u8, Self::Length>) -> Self {
+        const SEMI_WIDE_MODULUS: NonZero<U704> = NonZero::<U704>::new_unwrap(U704::from_be_hex("00000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
+        let mut tmp = Array::<u8, U88>::default();
         tmp[4..].copy_from_slice(&data[..]);
 
         let mut num = U704::from_be_slice(&tmp[..]);
@@ -496,7 +495,9 @@ impl Reduce<U448> for Scalar {
     }
 
     fn reduce_bytes(bytes: &Self::Bytes) -> Self {
-        Self::reduce(U448::from_le_slice(bytes))
+        todo!()
+        // size missmatch
+        // Self::reduce(U448::from_le_slice(bytes))
     }
 }
 
@@ -505,8 +506,10 @@ impl Reduce<U896> for Scalar {
 
     fn reduce(bytes: U896) -> Self {
         let bb = bytes.to_le_bytes();
-        let bytes = WideScalarBytes::from_slice(&bb);
-        <Self as Reduce<U896>>::reduce_bytes(bytes)
+        todo!()
+        // size missmatch
+        // let bytes = WideScalarBytes::from(bb);
+        // <Self as Reduce<U896>>::reduce_bytes(bytes)
     }
 
     fn reduce_bytes(bytes: &Self::Bytes) -> Self {
@@ -538,12 +541,16 @@ impl ReduceNonZero<U896> for Scalar {
 
         let t = U896::conditional_select(&bytes, &r, !underflow).wrapping_add(&U896::ONE);
         let t_bytes = t.to_le_bytes();
-        let bytes = WideScalarBytes::from_slice(&t_bytes);
-        Self::from_bytes_mod_order_wide(bytes)
+        todo!()
+        // size missmatch
+        // let bytes = WideScalarBytes::from(&t_bytes);
+        // Self::from_bytes_mod_order_wide(bytes)
     }
 
     fn reduce_nonzero_bytes(bytes: &Self::Bytes) -> Self {
-        Self::reduce_nonzero(U896::from_le_slice(bytes))
+        todo!()
+        // TODO: size missmatch
+        // Self::reduce_nonzero(U896::from_le_slice(bytes))
     }
 }
 
@@ -1025,7 +1032,7 @@ impl Scalar {
     where
         X: for<'a> ExpandMsg<'a>,
     {
-        let mut random_bytes = GenericArray::<u8, U84>::default();
+        let mut random_bytes = Array::<u8, U84>::default();
         let dst = [dst];
         let mut expander =
             X::expand_message(&[msg], &dst, random_bytes.len()).expect("invalid dst");
@@ -1251,19 +1258,19 @@ mod test {
     #[test]
     fn test_from_canonical_bytes() {
         // ff..ff should fail
-        let mut bytes = ScalarBytes::clone_from_slice(&hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
+        let mut bytes = ScalarBytes::from(hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
         bytes.reverse();
         let s = Scalar::from_canonical_bytes(&bytes);
         assert!(<Choice as Into<bool>>::into(s.is_none()));
 
         // n should fail
-        let mut bytes = ScalarBytes::clone_from_slice(&hex!("003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
+        let mut bytes = ScalarBytes::from(hex!("003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
         bytes.reverse();
         let s = Scalar::from_canonical_bytes(&bytes);
         assert!(<Choice as Into<bool>>::into(s.is_none()));
 
         // n-1 should work
-        let mut bytes = ScalarBytes::clone_from_slice(&hex!("003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f2"));
+        let mut bytes = ScalarBytes::from(hex!("003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f2"));
         bytes.reverse();
         let s = Scalar::from_canonical_bytes(&bytes);
         match Option::<Scalar>::from(s) {
@@ -1275,28 +1282,28 @@ mod test {
     #[test]
     fn test_from_bytes_mod_order_wide() {
         // n should become 0
-        let mut bytes = WideScalarBytes::clone_from_slice(&hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
+        let mut bytes = WideScalarBytes::from(hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f3"));
         bytes.reverse();
         let s = Scalar::from_bytes_mod_order_wide(&bytes);
         assert_eq!(s, Scalar::ZERO);
 
         // n-1 should stay the same
-        let mut bytes = WideScalarBytes::clone_from_slice(&hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f2"));
+        let mut bytes = WideScalarBytes::from(hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f2"));
         bytes.reverse();
         let s = Scalar::from_bytes_mod_order_wide(&bytes);
         assert_eq!(s, Scalar::ZERO - Scalar::ONE);
 
         // n+1 should become 1
-        let mut bytes = WideScalarBytes::clone_from_slice(&hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f4"));
+        let mut bytes = WideScalarBytes::from(hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffffffffffffffffffffffffffffffffffffffffffffff7cca23e9c44edb49aed63690216cc2728dc58f552378c292ab5844f4"));
         bytes.reverse();
         let s = Scalar::from_bytes_mod_order_wide(&bytes);
         assert_eq!(s, Scalar::ONE);
 
         // 2^912-1 should become 0x2939f823b7292052bcb7e4d070af1a9cc14ba3c47c44ae17cf72c985bb24b6c520e319fb37a63e29800f160787ad1d2e11883fa931e7de81
-        let mut bytes = WideScalarBytes::clone_from_slice(&hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
+        let mut bytes = WideScalarBytes::from(hex!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
         bytes.reverse();
         let s = Scalar::from_bytes_mod_order_wide(&bytes);
-        let mut bytes = ScalarBytes::clone_from_slice(&hex!("002939f823b7292052bcb7e4d070af1a9cc14ba3c47c44ae17cf72c985bb24b6c520e319fb37a63e29800f160787ad1d2e11883fa931e7de81"));
+        let mut bytes = ScalarBytes::from(hex!("002939f823b7292052bcb7e4d070af1a9cc14ba3c47c44ae17cf72c985bb24b6c520e319fb37a63e29800f160787ad1d2e11883fa931e7de81"));
         bytes.reverse();
         let reduced = Scalar::from_canonical_bytes(&bytes).unwrap();
         assert_eq!(s, reduced);
@@ -1340,6 +1347,6 @@ mod test {
         let res =
             Scalar::hash::<elliptic_curve::hash2curve::ExpandMsgXof<sha3::Shake256>>(msg, dst);
         let expected = hex_literal::hex!("2d32a08f09b88275cc5f437e625696b18de718ed94559e17e4d64aafd143a8527705132178b5ce7395ea6214735387398a35913656b4951300");
-        assert_eq!(res.to_bytes_rfc_8032(), expected.into());
+        assert_eq!(res.to_bytes_rfc_8032(), expected);
     }
 }
