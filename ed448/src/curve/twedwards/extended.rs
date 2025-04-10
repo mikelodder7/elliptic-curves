@@ -143,14 +143,13 @@ impl ExtendedPoint {
         let XY = self.X * self.Y;
         let ZT = self.Z * self.T;
 
-        // Y^2 - X^2 == Z^2 + T^2 * (TWISTED_D)
-
         let YY = self.Y.square();
         let XX = self.X.square();
         let ZZ = self.Z.square();
-        let TT = self.T.square();
-        let lhs = YY - XX;
-        let rhs = ZZ + TT * FieldElement::TWISTED_D;
+        let Z4 = ZZ.square();
+        let aX2 = XX * FieldElement::ONE;
+        let lhs = ZZ * (aX2 + YY);
+        let rhs = Z4 + (FieldElement::EDWARDS_D * (XX * YY));
 
         XY.ct_eq(&ZT) & lhs.ct_eq(&rhs)
     }

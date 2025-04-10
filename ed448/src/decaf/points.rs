@@ -326,13 +326,12 @@ impl DecafPoint {
 
         let XX_TT = (X + T) * (X - T);
 
-        let (isr, _) = (X.square() * XX_TT * FieldElement::NEG_EDWARDS_D).inverse_square_root();
-        let mut ratio = isr * XX_TT;
-        let altx = ratio * FieldElement::DECAF_FACTOR; // Sign choice
-        ratio.conditional_negate(altx.is_negative());
-        let k = ratio * Z - T;
+        let (isr, _) = (X.square() * XX_TT * FieldElement::ONE_MINUS_D).inverse_square_root();
 
-        let mut s = k * FieldElement::NEG_EDWARDS_D * isr * X;
+        let mut ratio = isr * XX_TT * FieldElement::SQRT_MINUS_D;
+        ratio.conditional_negate(ratio.is_negative());
+        let k = FieldElement::INVSQRT_MINUS_D * ratio * Z - T;
+        let mut s = k * FieldElement::ONE_MINUS_D * isr * X;
         s.conditional_negate(s.is_negative());
 
         CompressedDecaf(s.to_bytes())
@@ -569,20 +568,19 @@ impl CompressedDecaf {
         let ss = s.square();
         let u1 = FieldElement::ONE - ss;
         let u2 = FieldElement::ONE + ss;
-        let u1_sqr = u1.square();
+        let u2_sqr = u2.square();
 
-        let v = ss * (FieldElement::NEG_FOUR_TIMES_TWISTED_D) + u1_sqr; // XXX: constantify please
+        let v = u2_sqr - FieldElement::FOUR_TIMES_EDWARDS_D * ss;
 
-        let (I, ok) = (v * u1_sqr).inverse_square_root();
+        let (I, ok) = (v * u2_sqr).inverse_square_root();
 
-        let Dx = I * u1;
-        let Dxs = (s + s) * Dx;
+        let Dx = I * u2;
 
-        let mut X = (Dxs * I) * v;
-        let k = Dxs * FieldElement::DECAF_FACTOR;
-        X.conditional_negate(k.is_negative());
+        let mut u3 = FieldElement::TWO * s * Dx * FieldElement::SQRT_MINUS_D;
+        u3.conditional_negate(u3.is_negative());
 
-        let Y = Dx * u2;
+        let X = u3 * I * v * FieldElement::INVSQRT_MINUS_D;
+        let Y = u1 * Dx;
         let Z = FieldElement::ONE;
         let T = X * Y;
         let pt = ExtendedPoint { X, Y, Z, T };
@@ -759,6 +757,34 @@ mod test {
         assert_eq!(point.0.is_on_curve().unwrap_u8(), 1u8);
         assert_ne!(point, DecafPoint::IDENTITY);
         assert_ne!(point, DecafPoint::GENERATOR);
+    }
+
+    #[test]
+    fn voprf_test() {
+        use elliptic_curve::hash2curve::ExpandMsgXof;
+        use hex_literal::hex;
+        use sha3::Shake256;
+
+        let blind = Scalar::from_bytes_mod_order(&ScalarBytes::from(hex!("64d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec65fa3833a26e9388336361686ff1f83df55046504dfecad8549ba11200")));
+        // https://www.rfc-editor.org/rfc/rfc9497#:~:text=Input%20%3D%2000-,Blind%20%3D%2064d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec65fa%0A3833a26e9388336361686ff1f83df55046504dfecad8549ba112,-BlindedElement%20%3D%207261bbc335c664ba788f1b1a1a4cd5190cc30e787ef277665ac%0A1d314f8861e3ec11854ce3ddd42035d9e0f5cddde324c332d8c880abc00eb
+        assert_eq!(blind.to_bytes(), hex!("64d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec65fa3833a26e9388336361686ff1f83df55046504dfecad8549ba112"));
+
+        let mut uniform_bytes = [0; 112];
+        ExpandMsgXof::<Shake256>::expand_message(
+            &[&[0]],
+            &[b"HashToGroup-OPRFV1-\x01-decaf448-SHAKE256"],
+            112,
+        )
+        .unwrap()
+        .fill_bytes(&mut uniform_bytes);
+        assert_eq!(uniform_bytes, hex!("16a43ca9148330f7fd70d04fdeaeba3a0fdf30b9cbccf34875da4c5989080b5a8430ecc590fec29293965431c49822a5e1101849ff009e121b60178013f35572ef767075f3d10f51829a0dbe45f49a04aded911cee38b85499940ae8938a3a30c8a7f99218ea67bad0ac0ace8535b974"));
+
+        let point = DecafPoint::from_uniform_bytes(&uniform_bytes);
+        assert_eq!(point.compress().as_bytes(), hex!("169f8fa3f4f97ae4b44bf595571e88d11e0ea2cce3ec0172f27e2a011709249c58722db5b9ecc010251dec7d8911f03f27c488b6a9579ddd"));
+
+        let blinded_element = point * blind;
+        // https://www.rfc-editor.org/rfc/rfc9497#:~:text=Blind%20%3D%2064d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec65fa%0A3833a26e9388336361686ff1f83df55046504dfecad8549ba112-,BlindedElement%20%3D%207261bbc335c664ba788f1b1a1a4cd5190cc30e787ef277665ac%0A1d314f8861e3ec11854ce3ddd42035d9e0f5cddde324c332d8c880abc00eb,-EvaluationElement%20%3D%20ca1491a526c28d880806cf0fb0122222392cf495657be6e4%0Ac9d203bceffa46c86406caf8217859d3fb259077af68e5d41b3699410781f467
+        assert_eq!(blinded_element.compress().as_bytes(), hex!("7261bbc335c664ba788f1b1a1a4cd5190cc30e787ef277665ac1d314f8861e3ec11854ce3ddd42035d9e0f5cddde324c332d8c880abc00eb"));
     }
 
     // TODO: uncomment once elliptic-curve-tools is updated to match elliptic-curve 0.14
