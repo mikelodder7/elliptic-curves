@@ -326,13 +326,12 @@ impl DecafPoint {
 
         let XX_TT = (X + T) * (X - T);
 
-        let (isr, _) = (X.square() * XX_TT * FieldElement::NEG_EDWARDS_D).inverse_square_root();
-        let mut ratio = isr * XX_TT;
-        let altx = ratio * FieldElement::DECAF_FACTOR; // Sign choice
-        ratio.conditional_negate(altx.is_negative());
-        let k = ratio * Z - T;
+        let (isr, _) = (X.square() * XX_TT * FieldElement::ONE_MINUS_D).inverse_square_root();
 
-        let mut s = k * FieldElement::NEG_EDWARDS_D * isr * X;
+        let mut ratio = isr * XX_TT * FieldElement::SQRT_MINUS_D;
+        ratio.conditional_negate(ratio.is_negative());
+        let k = FieldElement::INVSQRT_MINUS_D * ratio * Z - T;
+        let mut s = k * FieldElement::ONE_MINUS_D * isr * X;
         s.conditional_negate(s.is_negative());
 
         CompressedDecaf(s.to_bytes())
@@ -569,20 +568,19 @@ impl CompressedDecaf {
         let ss = s.square();
         let u1 = FieldElement::ONE - ss;
         let u2 = FieldElement::ONE + ss;
-        let u1_sqr = u1.square();
+        let u2_sqr = u2.square();
 
-        let v = ss * (FieldElement::NEG_FOUR_TIMES_TWISTED_D) + u1_sqr; // XXX: constantify please
+        let v = u2_sqr - FieldElement::FOUR_TIMES_EDWARDS_D * ss;
 
-        let (I, ok) = (v * u1_sqr).inverse_square_root();
+        let (I, ok) = (v * u2_sqr).inverse_square_root();
 
-        let Dx = I * u1;
-        let Dxs = (s + s) * Dx;
+        let Dx = I * u2;
 
-        let mut X = (Dxs * I) * v;
-        let k = Dxs * FieldElement::DECAF_FACTOR;
-        X.conditional_negate(k.is_negative());
+        let mut u3 = FieldElement::TWO * s * Dx * FieldElement::SQRT_MINUS_D;
+        u3.conditional_negate(u3.is_negative());
 
-        let Y = Dx * u2;
+        let X = u3 * I * v * FieldElement::INVSQRT_MINUS_D;
+        let Y = u1 * Dx;
         let Z = FieldElement::ONE;
         let T = X * Y;
         let pt = ExtendedPoint { X, Y, Z, T };
