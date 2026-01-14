@@ -53,7 +53,7 @@ impl ExtensiblePoint {
         let A = self.X.square();
         let B = self.Y.square();
         let C = self.Z.square() + self.Z.square();
-        let D = -A;
+        let D = A;
         let E = (self.X + self.Y).square() - A - B;
         let G = D + B;
         let F = G - C;
@@ -78,12 +78,12 @@ impl ExtensiblePoint {
     pub fn add_extended(&self, other: &ExtendedPoint) -> ExtensiblePoint {
         let A = self.X * other.X;
         let B = self.Y * other.Y;
-        let C = self.T1 * self.T2 * other.T * FieldElement::TWISTED_D;
+        let C = self.T1 * self.T2 * other.T * FieldElement::EDWARDS_D;
         let D = self.Z * other.Z;
         let E = (self.X + self.Y) * (other.X + other.Y) - A - B;
         let F = D - C;
         let G = D + C;
-        let H = B + A;
+        let H = B - A;
         ExtensiblePoint {
             X: E * F,
             Y: G * H,

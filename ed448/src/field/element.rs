@@ -187,15 +187,16 @@ impl MapToCurve for FieldElement {
 }
 
 impl FieldElement {
-    pub const A_PLUS_TWO_OVER_FOUR: Self = Self(ConstMontyType::new(&U448::from_be_hex("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000098aa")));
-    pub const DECAF_FACTOR: Self = Self(ConstMontyType::new(&U448::from_be_hex("22d962fbeb24f7683bf68d722fa26aa0a1f1a7b8a5b8d54b64a2d780968c14ba839a66f4fd6eded260337bf6aa20ce529642ef0f45572736")));
     pub const EDWARDS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffff6756")));
+    pub const INVSQRT_MINUS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("6ef40652e222c057902be35a0bcac8075a90950c3a5b27a7d6ba56f128a6521abe707ee2c21fba15efbb2479f19e94f353afbb5eb878682c")));
     pub const J: Self = Self(ConstMontyType::new(&U448::from_u64(156326)));
     pub const MINUS_ONE: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffffffffffffffffffffffffffffffffffffffffffffffffffffe")));
-    pub const NEG_EDWARDS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000098a9")));
-    pub const NEG_FOUR_TIMES_TWISTED_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000262a8")));
+    pub const FOUR_TIMES_EDWARDS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffffffffffffffffffffffffffffffffffffffffffffffffd9d5b")));
     pub const ONE: Self = Self(ConstMontyType::new(&U448::ONE));
+    pub const ONE_MINUS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000098aa")));
+    pub const SQRT_MINUS_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("22d962fbeb24f7683bf68d722fa26aa0a1f1a7b8a5b8d54b64a2d780968c14ba839a66f4fd6eded260337bf6aa20ce529642ef0f45572736")));
     pub const TWISTED_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffff6755")));
+    pub const TWO: Self = Self(ConstMontyType::new(&U448::from_u64(2)));
     pub const TWO_TIMES_TWISTED_D: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffffffffffffffffffffffffffffffffffffffffffffffffeceab")));
     pub const Z: Self = Self(ConstMontyType::new(&U448::from_be_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffffffffffffffffffffffffffffffffffffffffffffffffffffe")));
     pub const ZERO: Self = Self(ConstMontyType::new(&U448::ZERO));
@@ -376,13 +377,12 @@ impl FieldElement {
         let w2 = s2 - Self::ONE;
         let w3 = v_prime * s * (r - Self::ONE) * ONE_MINUS_TWO_D + sgn;
 
-        EdwardsPoint {
+        TwistedExtendedPoint {
             X: w0 * w3,
             Y: w2 * w1,
             Z: w1 * w3,
             T: w0 * w2,
         }
-        .to_twisted()
     }
 }
 
